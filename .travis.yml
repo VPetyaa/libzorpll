@@ -3,9 +3,7 @@ before_install:
 - sudo apt-get install devscripts libssl-dev libglib2.0-dev debhelper libcap-dev zlib1g-dev
   binutils autotools-dev po-debconf autoconf dh-autoreconf
 script:
-- debuild -i -us -uc -b
-- git clone https://github.com/magwas/zorp.git -b identity ../identity
-- ../identity/buildForLaunchpad
+- debuild -i -us -uc -b && git clone https://github.com/magwas/zorp.git -b identity ../identity &&../identity/buildForLaunchpad
 env:
   global:
     secure: TxhvQL/oKm3Rf8KsHP8D9Vo0694+USD4oQlsoIong4EplpbzFalmAXmRXQZfO/1XOSHakdo4Zr+MPAfidmXDgiOJ18SyOOug1MIqDCJoizu7u/XG1+bZ+r4SlWtT6OBtuIYrzNAvf1uIFkZaWvY3yls67bft739y04lNYWfFNIw=
