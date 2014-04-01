@@ -7,7 +7,8 @@ dnl RELEASE_TAG        - Debian release tag which is put to debian/changelog
 dnl SNAPSHOT_VERSION   - snapshot version to add to version number
 dnl SOURCE_REVISION    - Revision of the source-tree, will added to the version string
 dnl
-AC_INIT(src/log.c)
+AC_INIT(src/log.cc)
+m4_include(ax_cxx_compile_stdcxx_11.m4)
 
 dnl ***************************************************************************
 dnl Definitions
@@ -18,7 +19,7 @@ VERSION=`cat $srcdir/VERSION`
 dnl ***************************************************************************
 dnl Dependencies
 
-GLIB_MIN_VERSION=2.2.3
+LIBGLIB_MIN_VERSION=2.2.3
 OPENSSL_MIN_VERSION=0.9.8
 
 dnl ***************************************************************************
@@ -38,7 +39,7 @@ esac
 if test -r $srcdir/dist.conf; then
 	# read defaults, dist.conf does not change
 	# values for parameters that are already set
-	source $srcdir/dist.conf
+	. $srcdir/dist.conf
 fi
 
 
@@ -71,10 +72,6 @@ AC_ARG_ENABLE(trace,
               [  --enable-trace       Enable trace information & messages (default: no)],,
               enable_trace=no)
 
-AC_ARG_ENABLE(werror,
-              [  --enable-werror      When enabled, treat compiler warnings as errors (default: yes)],,
-              enable_werror=yes)
-
 AC_ARG_ENABLE(mem-trace,
               [  --enable-mem-trace   Enable memory trace (default: no)],,
               enable_mem_trace=no)
@@ -106,6 +103,28 @@ fi
 
 dnl Checks for programs.
 AC_PROG_CC
+AC_PROG_CXX
+AX_CXX_COMPILE_STDCXX_11(noext)
+AC_PROG_CPP
+AC_PROG_CXXCPP
+
+AC_LANG_PUSH([C++])
+AC_COMPILE_IFELSE([AC_LANG_SOURCE(
+  [[template <typename T>
+    struct check {
+      static_assert(sizeof(int) <= sizeof(T), "not big enough");
+    };
+
+    typedef check<check<bool>> right_angle_brackets;
+
+    int a;
+    decltype(a) b;
+
+    typedef check<int> check_type;
+    check_type c;
+    check_type&& cr = static_cast<check_type&&>(c);]])],,
+  AC_MSG_FAILURE(['$CXX $CXXFLAGS' does not accept full ISO C++11]))
+
 AM_PROG_LIBTOOL
 
 dnl ***************************************************************************
@@ -127,10 +146,10 @@ AC_STRUCT_TM
 PKG_CHECK_MODULES(OPENSSL, openssl >= $OPENSSL_MIN_VERSION,,
         AC_MSG_ERROR(Cannot find OpenSSL library version >= $OPENSSL_MIN_VERSION: is pkg-config in path?))
 
-save_CPPFLAGS=$CPPFLAGS
-CPPFLAGS="$CPPFLAGS $OPENSSL_CFLAGS"
+save_CXXFLAGS=$CXXFLAGS
+CXXFLAGS="$CXXFLAGS $OPENSSL_CFLAGS"
 AC_CHECK_HEADER(openssl/ssl.h, [], [AC_MSG_ERROR([OpenSSL header file <openssl/ssl.h> is missing])])
-CPPFLAGS=$save_CPPFLAGS
+CXXFLAGS=$save_CXXFLAGS
 
 if test "x$ac_cv_header_openssl_des_h" = "xno"; then
 	AC_ERROR(OpenSSL headers required)
@@ -220,9 +239,14 @@ if test "x$ac_cv_header_crypt_h" = "xyes"; then
 	AC_CHECK_FUNCS(crypt)
 fi
 
-AM_PATH_GLIB_2_0($GLIB_MIN_VERSION,,
-    AC_MSG_ERROR(Cannot find GLIB version >= $GLIB_MIN_VERSION: is pkg-config in path?), gthread)
+PKG_CHECK_MODULES(GLIB, glib-2.0 >= $LIBGLIB_MIN_VERSION,,
+	AC_MSG_ERROR(Cannot find GLib library version >= $LIBGLIB_MIN_VERSION: is pkg-config in path?))
 
+PKG_CHECK_MODULES(GTHREAD, gthread-2.0 >= $LIBGLIB_MIN_VERSION,,
+	AC_MSG_ERROR(Cannot find Gthread library version >= $LIBGLIB_MIN_VERSION: is pkg-config in path?))
+
+dnl AM_PATH_GLIB_2_0($GLIB_MIN_VERSION,,
+dnl    AC_MSG_ERROR(Cannot find GLIB version >= $GLIB_MIN_VERSION: is pkg-config in path?), gthread)
 
 dnl ***************************************************************************
 dnl Misc checks
@@ -313,7 +337,7 @@ VERSION_COMPAT=`echo $VERSION_NOSNAPSHOT |  cut -d '.' -f 3`
 VERSION_AGE=`echo $VERSION_NOSNAPSHOT |  cut -d '.' -f 4`
 
 LIBZORPLL_LT_RELEASE="$VERSION_MAJOR.$VERSION_MINOR"
-LIBZORPLL_LT_CURRENT=$@<:@ $VERSION_COMPAT + $VERSION_AGE @:>@
+LIBZORPLL_LT_CURRENT=$(( $VERSION_COMPAT + $VERSION_AGE ))
 LIBZORPLL_LT_COMPAT_BRANCH="$VERSION_MAJOR.$VERSION_MINOR-$VERSION_COMPAT"
 LIBZORPLL_LT_COMPAT_PL="$VERSION_COMPAT"
 LIBZORPLL_LT_AGE="$VERSION_AGE"
@@ -378,14 +402,10 @@ EOF
 
 CFLAGS="$CFLAGS -D_GNU_SOURCE -Wall -Wshadow -W -Wstrict-prototypes -Werror-implicit-function-declaration -Wpointer-arith -g"
 
-if test "x$enable_werror" = "xyes"; then
-  CFLAGS="$CFLAGS -Werror"
-fi
-
-DEPS_CPPFLAGS="$CPPFLAGS $GLIB_CFLAGS $OPENSSL_CFLAGS"
-CPPFLAGS="-I$top_srcdir/lib -I$top_srcdir $DEPS_CPPFLAGS"
+DEPS_CXXFLAGS="$CXXFLAGS $GLIB_CFLAGS $GTHREAD_CFLAGS $OPENSSL_CFLAGS"
+CXXFLAGS="-I$top_srcdir/lib -I$top_srcdir $DEPS_CXXFLAGS"
 OPENSSL_CPPFLAGS="$OPENSSL_CFLAGS"
-DEPS_LIBS="$LIBS $GLIB_LIBS $OPENSSL_LIBS"
+DEPS_LIBS="$LIBS $GLIB_LIBS $GTHREAD_LIBS $OPENSSL_LIBS"
 LIBS="$ZORP_LIBS $DEPS_LIBS"
 
 AC_SUBST(SNAPSHOT_VERSION)
@@ -402,7 +422,7 @@ AC_SUBST(LIBZORPLL_LT_AGE)
 
 AC_SUBST(OPENSSL_CFLAGS)
 AC_SUBST(OPENSSL_CPPFLAGS)
-AC_SUBST(DEPS_CPPFLAGS)
+AC_SUBST(DEPS_CXXFLAGS)
 AC_SUBST(DEPS_LIBS)
 AC_SUBST(ZORP_LIBS)
 
