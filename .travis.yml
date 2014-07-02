@@ -1,0 +1,19 @@
+language: cpp
+compiler:
+ - gcc
+ - clang
+branches:
+  only:
+    - travis
+before_install:
+  - wget  -qO - http://download.opensuse.org/repositories/security:/Zorp/xUbuntu_12.04/Release.key | sudo apt-key add -
+  - sudo apt-get update -qq
+script:
+  - sudo apt-get install -qq devscripts equivs
+  - sudo mk-build-deps -i
+  - ./autogen.sh
+  - ./configure
+  - make
+  - make check
+after_success:
+  - dpkg-buildpackage -S
