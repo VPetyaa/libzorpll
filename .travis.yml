@@ -1,19 +1,38 @@
 language: cpp
 compiler:
- - gcc
- - clang
-branches:
-  only:
-    - travis
+  - gcc
+  - clang
+
 before_install:
-  - wget  -qO - http://download.opensuse.org/repositories/security:/Zorp/xUbuntu_12.04/Release.key | sudo apt-key add -
+  - echo "deb http://download.opensuse.org/repositories/home:/VPetya:/zorp/xUbuntu_12.04/ ./" | sudo tee -a /etc/apt/sources.list
+  - sudo sh -c "echo 'deb http://download.opensuse.org/repositories/openSUSE:/Tools/xUbuntu_12.04/ /' >> /etc/apt/sources.list.d/osc.list"
+  - wget -qO - http://download.opensuse.org/repositories/home:/VPetya:/zorp/xUbuntu_12.04/Release.key | sudo apt-key add -
+  - wget -qO - http://download.opensuse.org/repositories/openSUSE:Tools/xUbuntu_12.04/Release.key | sudo apt-key add -
   - sudo apt-get update -qq
+  - sudo apt-get install libboost-test-dev
+  - wget http://cz.archive.ubuntu.com/ubuntu/pool/main/a/automake/automake1.4_1.4-p6-13.1_all.deb
+  - wget http://cz.archive.ubuntu.com/ubuntu/pool/main/a/autoconf/autoconf_2.69-6_all.deb
+  - sudo dpkg -i autoconf_2.69-6_all.deb
+  - sudo dpkg -i automake1.4_1.4-p6-13.1_all.deb
+  - sudo apt-get update -qq
+  - echo -e "" | sudo apt-get install osc
+
 script:
   - sudo apt-get install -qq devscripts equivs
   - sudo mk-build-deps -i
   - ./autogen.sh
   - ./configure
   - make
-  - make check
+
 after_success:
   - dpkg-buildpackage -S
+  - echo -e "[general]\napiurl = https://api.opensuse.org\n[https://api.opensuse.org]\nuser = VPetya\npass = $PASS\n" > ~/.oscrc
+  - osc co home:VPetya:travis
+  - mv ../*.* home:VPetya:travis/libzorpll
+  - cd home:VPetya:travis/libzorpll
+  - osc addremove
+  - osc commit -m "TRAVIS"
+
+env:
+  global:
+    secure: D4MIj7By3x2w4sZraBvvbR/lvR5PNGkMBrtf061SDEs12RUHCp1Hz5cviJdcA2FUvub4IEvyr3rAamtDtkuDwYncvxG8MitgxIeJ55xkFUP3oLQA6UrtwRRyXbBUyeGGCNwo9UT12bPfBMlki7ldc1hqD4gzv29pl/9SefpLjAQ=
