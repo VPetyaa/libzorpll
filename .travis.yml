@@ -26,8 +26,11 @@ script:
 
 after_success:
   - dpkg-buildpackage -S
+  - echo -e "addFilter(\".*\") \n" > ../libzorpll.rpmlintrc
+  - cp rpm/* ../
   - echo -e "[general]\napiurl = https://api.opensuse.org\n[https://api.opensuse.org]\nuser = VPetya\npass = $PASS\n" > ~/.oscrc
   - osc co home:VPetya:travis
+  - rm home:VPetya:travis/libzorpll/*
   - mv ../*.* home:VPetya:travis/libzorpll
   - cd home:VPetya:travis/libzorpll
   - osc addremove
