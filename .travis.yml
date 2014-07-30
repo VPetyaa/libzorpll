@@ -29,10 +29,10 @@ after_success:
   - echo -e "addFilter(\".*\") \n" > ../libzorpll.rpmlintrc
   - cp rpm/* ../
   - echo -e "[general]\napiurl = https://api.opensuse.org\n[https://api.opensuse.org]\nuser = VPetya\npass = $PASS\n" > ~/.oscrc
-  - osc co home:VPetya:travis
-  - rm home:VPetya:travis/libzorpll/*
-  - mv ../*.* home:VPetya:travis/libzorpll
-  - cd home:VPetya:travis/libzorpll
+  - osc co security:Zorp:LBaaS
+  - rm security:Zorp:LBaaS/libzorpll/*
+  - mv ../*.* security:Zorp:LBaaS/libzorpll
+  - cd security:Zorp:LBaaS/libzorpll
   - osc addremove
   - osc commit -m "TRAVIS"
 
